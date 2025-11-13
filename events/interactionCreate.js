@@ -14,7 +14,7 @@ module.exports = {
     }
     try {
       //Executa o comando
-      await command.execute(interaction);
+      await command.execute(interaction, interaction.client);
     } catch (error) {
       console.error('Erro ao executar comando:', error);
       if (interaction.replied || interaction.deferred) {

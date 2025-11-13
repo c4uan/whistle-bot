@@ -7,7 +7,7 @@ const {
 } = require('discord.js');
 const { DisTube } = require('distube');
 const { SpotifyPlugin } = require('@distube/spotify');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
+const { SoundCloudPlugin } = require('@distube/soundcloud');
 const fs = require('fs');
 const path = require('path');
 
@@ -21,6 +21,7 @@ const client = new Client({
   partials: [Partials.Channel],
 });
 
+// --- CARREGADOR DE COMANDOS ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs
@@ -32,8 +33,24 @@ for (const file of commandFiles) {
   client.commands.set(command.data.name, command);
 }
 
-// Inicializando DisTube
+// --- CARREGADOR DE EVENTOS (NOVO) ---
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs
+  .readdirSync(eventsPath)
+  .filter((file) => file.endsWith('.js'));
 
+for (const file of eventFiles) {
+  const filePath = path.join(eventsPath, file);
+  const event = require(filePath);
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args));
+  }
+}
+// --- FIM DO CARREGADOR DE EVENTOS ---
+
+// Inicializando DisTube
 client.distube = new DisTube(client, {
   plugins: [
     new SpotifyPlugin({
@@ -42,12 +59,11 @@ client.distube = new DisTube(client, {
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
       },
     }),
-    new YtDlpPlugin({
-      update: true,
-    }),
+    new SoundCloudPlugin(),
   ],
   joinNewVoiceChannel: true,
 });
+
 // Eventos do DisTube
 client.distube
   .on('playSong', (queue, song) => {
@@ -99,29 +115,5 @@ client.distube
     const channel = queue.textChannel;
     if (channel?.send) channel.send('✅ Fim da fila!');
   });
-
-// Eventos de interação
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isCommand()) return;
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-  try {
-    await command.execute(interaction, client);
-  } catch (err) {
-    console.error(err);
-    if (interaction.replied || interaction.deferred) {
-      await interaction.editReply({ content: '❌ Erro ao executar comando!' });
-    } else {
-      await interaction.reply({
-        content: '❌ Erro ao executar comando!',
-        ephemeral: true,
-      });
-    }
-  }
-});
-
-client.once('clientReady', () => {
-  console.log(`${client.user.tag} está online!`);
-});
 
 client.login(process.env.DISCORD_TOKEN);

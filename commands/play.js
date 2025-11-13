@@ -55,6 +55,10 @@ module.exports = {
     }
 
     try {
+      // Verificação de query válida
+      if (!query || query.trim().length === 0)
+        throw new Error('Query inválida');
+
       await client.distube.play(voiceChannel, query, {
         member: interaction.member,
         textChannel,
@@ -69,16 +73,23 @@ module.exports = {
       });
     } catch (err) {
       console.error(err);
-      let embed = new EmbedBuilder()
-        .setColor('Red')
-        .setDescription('❌ Ocorreu um erro ao tentar tocar a música.');
+
+      // Tratamento detalhado de erros
+      let description = '❌ Ocorreu um erro ao tentar tocar a música.';
+
       if (err.message?.includes('Cannot get token from scraping'))
-        embed.setDescription(
-          '⚠️ Spotify: não é possível buscar mais de 100 faixas.'
-        );
+        description = '⚠️ Spotify: não é possível buscar mais de 100 faixas.';
       else if (err.message?.includes('No valid results'))
-        embed.setDescription('❌ Música ou playlist não encontrada.');
-      await interaction.editReply({ embeds: [embed] });
+        description = '❌ Música ou playlist não encontrada.';
+      else if (err.errorCode === 'NO_EXTRACTOR_PLUGIN')
+        description =
+          '❌ Nenhum plugin de extração disponível para essa pesquisa. Use um link do YouTube ou Spotify.';
+
+      await interaction.editReply({
+        embeds: [
+          new EmbedBuilder().setColor('Red').setDescription(description),
+        ],
+      });
     }
   },
 };
