@@ -33,13 +33,21 @@ for (const file of commandFiles) {
 }
 
 // Inicializando DisTube
+
 client.distube = new DisTube(client, {
-  emitNewSongOnly: true,
-  emitAddSongWhenCreatingQueue: true,
-  plugins: [new SpotifyPlugin(), new YtDlpPlugin()],
+  plugins: [
+    new SpotifyPlugin({
+      api: {
+        clientId: process.env.SPOTIFY_CLIENT_ID,
+        clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+      },
+    }),
+    new YtDlpPlugin({
+      update: true,
+    }),
+  ],
   joinNewVoiceChannel: true,
 });
-
 // Eventos do DisTube
 client.distube
   .on('playSong', (queue, song) => {
@@ -68,7 +76,7 @@ client.distube
     if (!channel?.send) return;
     const embed = {
       color: 0xffff00,
-      title: '➕ Adicionado à fila',
+      title: '✅ Adicionado à fila',
       description: `**[${song.name}](${song.url})**`,
       thumbnail: { url: song.thumbnail },
       fields: [
@@ -79,9 +87,13 @@ client.distube
     };
     channel.send({ embeds: [embed] }).catch(() => {});
   })
-  .on('error', (channel, error) => {
+  .on('error', (error, queue) => {
     console.error('Distube Error:', error);
-    if (channel?.send) channel.send(`❌ Ocorreu um erro: ${error.message}`);
+    if (queue?.textChannel?.send) {
+      queue.textChannel.send(
+        `❌ Ocorreu um erro: ${error.message.slice(0, 1900)}`
+      );
+    }
   })
   .on('finish', (queue) => {
     const channel = queue.textChannel;
@@ -108,8 +120,8 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`${client.user.tag} está online!`);
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN);
